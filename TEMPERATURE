@@ -1,0 +1,136 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include "DHT.h"
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+// ==================== 1. Wi-Fi 與 ThingSpeak 設定 ====================
+const char* ssid        = "你的手機熱點名稱";  // 請填入手機熱點名稱 (注意大小寫)
+const char* password    = "你的手機熱點密碼";  // 請填入手機熱點密碼
+const char* writeApiKey = "PK8IX1EG1PTCH16U"; // 你的 ThingSpeak Write API Key
+
+// ==================== 2. ESP32 腳位與物件設定 ====================
+#define DHTPIN1 13
+#define DHTPIN2 14
+#define DHTPIN3 27
+#define DHTPIN4 26
+#define DHTTYPE DHT11
+
+DHT dht1(DHTPIN1, DHTTYPE);
+DHT dht2(DHTPIN2, DHTTYPE);
+DHT dht3(DHTPIN3, DHTTYPE);
+DHT dht4(DHTPIN4, DHTTYPE);
+
+#define ONE_WIRE_BUS 25
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature ds18b20(&oneWire);
+
+// 全域數據變數
+float tempDHT[4], humDHT[4];
+float tempDS18B20;
+
+// ==================== 3. 初始化 setup ====================
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  Serial.println("\n==============================================");
+  Serial.println("  5組溫濕度環境監測系統 (ESP32 + ThingSpeak) 啟動  ");
+  Serial.println("==============================================");
+
+  // 初始化感測器
+  dht1.begin(); dht2.begin(); dht3.begin(); dht4.begin();
+  ds18b20.begin();
+
+  // 連結 Wi-Fi
+  WiFi.begin(ssid, password);
+  Serial.print("Wi-Fi 連線中");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\n[Wi-Fi] 已連線成功！");
+  Serial.print("[Wi-Fi] ESP32 IP 位址: ");
+  Serial.println(WiFi.localIP());
+}
+
+// ==================== 4. 主迴圈 loop ====================
+void loop() {
+  // 1. 讀取所有感測器數值
+  readAllSensors();
+
+  // 2. 於序列埠格式化輸出所有數據
+  printToSerial();
+
+  // 3. 打包並即時上傳到 ThingSpeak
+  uploadDataToServer();
+
+  // ThingSpeak 免費版限制：兩次上傳必須間隔至少 15 秒
+  delay(15000);
+}
+
+// ==================== 5. 功能函式 ====================
+
+// 讀取所有感測器數據
+void readAllSensors() {
+  // 讀取 4 組 DHT11
+  DHT* dhts[] = {&dht1, &dht2, &dht3, &dht4};
+  for (int i = 0; i < 4; i++) {
+    humDHT[i]  = dhts[i]->readHumidity();
+    tempDHT[i] = dhts[i]->readTemperature();
+  }
+
+  // 讀取 DS18B20
+  ds18b20.requestTemperatures();
+  tempDS18B20 = ds18b20.getTempCByIndex(0);
+}
+
+// 格式化輸出至序列埠
+void printToSerial() {
+  Serial.println("\n================ [即時數據監測] ================");
+  
+  for (int i = 0; i < 4; i++) {
+    if (isnan(tempDHT[i]) || isnan(humDHT[i])) {
+      Serial.printf("感測器 #%d (DHT11)   -> [讀取失敗] 請檢查腳位接線\n", i + 1);
+    } else {
+      Serial.printf("感測器 #%d (DHT11)   -> 溫度: %.1f °C  |  濕度: %.1f %%\n", i + 1, tempDHT[i], humDHT[i]);
+    }
+  }
+
+  if (tempDS18B20 == DEVICE_DISCONNECTED_C || tempDS18B20 == -127.0) {
+    Serial.println("感測器 #5 (DS18B20) -> [讀取失敗] 請檢查 4.7kΩ 電阻與接線");
+  } else {
+    Serial.printf("感測器 #5 (DS18B20) -> 溫度: %.1f °C  |  (無濕度功能)\n", tempDS18B20);
+  }
+  Serial.println("------------------------------------------------");
+}
+
+// 上傳至 ThingSpeak
+void uploadDataToServer() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+
+    // 正確的 ThingSpeak API 上傳網址格式
+    String url = "http://api.thingspeak.com/update?api_key=" + String(writeApiKey);
+    url += "&field1=" + String(tempDHT[0]);   // DHT11 #1 溫度
+    url += "&field2=" + String(tempDHT[1]);   // DHT11 #2 溫度
+    url += "&field3=" + String(tempDHT[2]);   // DHT11 #3 溫度
+    url += "&field4=" + String(tempDHT[3]);   // DHT11 #4 溫度
+    url += "&field5=" + String(tempDS18B20);  // DS18B20  溫度
+    url += "&field6=" + String(humDHT[0]);    // DHT11 #1 濕度
+    url += "&field7=" + String(humDHT[1]);    // DHT11 #2 濕度
+    url += "&field8=" + String(humDHT[2]);    // DHT11 #3 濕度
+
+    http.begin(url);
+    int httpCode = http.GET();
+
+    if (httpCode > 0) {
+      Serial.printf("[ThingSpeak] 上傳成功！回應碼: %d\n", httpCode);
+    } else {
+      Serial.printf("[ThingSpeak] 上傳失敗，錯誤碼: %s\n", http.errorToString(httpCode).c_str());
+    }
+    http.end();
+  } else {
+    Serial.println("[Wi-Fi 警告] 網路已斷線，取消上傳！");
+  }
+}

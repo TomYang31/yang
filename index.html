@@ -1,110 +1,1048 @@
-<?php
-date_default_timezone_set('Asia/Taipei');
-$server_time = date("Y-m-d H:i:s");
-$team_name = "智冷未來";
-$school_name = "彰師附工";
-?>
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $team_name; ?> - <?php echo $school_name; ?>教室溫度監測</title>
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>智冷未來 - 彰師附工教室環境監測</title>
+
+
     <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+
+            margin: 0;
+
+            font-family:
+                Arial,
+                "Microsoft JhengHei",
+                sans-serif;
+
+            background: #f4f7fb;
+
+            color: #333;
         }
-        .box {
-            border: 1px solid #ccc;
-            padding: 15px;
-            max-width: 400px;
+
+
+        /* =========================
+           頁面標題
+        ========================= */
+
+        .header {
+
+            background: #1f6feb;
+
+            color: white;
+
+            padding: 25px 20px;
+
+            text-align: center;
+
+            box-shadow:
+                0 2px 8px rgba(0,0,0,0.15);
         }
-        .temp {
-            font-size: 48px;
+
+
+        .header h1 {
+
+            margin: 0 0 8px;
+
+            font-size: 30px;
+        }
+
+
+        .header p {
+
+            margin: 0;
+
+            font-size: 16px;
+
+            opacity: 0.9;
+        }
+
+
+        /* =========================
+           主內容
+        ========================= */
+
+        .container {
+
+            max-width: 1100px;
+
+            margin: 25px auto;
+
+            padding: 0 15px;
+        }
+
+
+        /* =========================
+           狀態
+        ========================= */
+
+        .status {
+
+            background: white;
+
+            border-radius: 12px;
+
+            padding: 15px 20px;
+
+            margin-bottom: 20px;
+
+            box-shadow:
+                0 2px 8px rgba(0,0,0,0.08);
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            flex-wrap: wrap;
+
+            gap: 10px;
+        }
+
+
+        .online {
+
+            color: #198754;
+
             font-weight: bold;
+        }
+
+
+        /* =========================
+           感測器卡片
+        ========================= */
+
+        .sensor-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(auto-fit, minmax(220px, 1fr));
+
+            gap: 18px;
+        }
+
+
+        .sensor-card {
+
+            background: white;
+
+            border-radius: 14px;
+
+            padding: 20px;
+
+            box-shadow:
+                0 3px 10px rgba(0,0,0,0.08);
+
+            transition: transform 0.2s;
+        }
+
+
+        .sensor-card:hover {
+
+            transform: translateY(-3px);
+        }
+
+
+        .sensor-title {
+
+            font-size: 20px;
+
+            font-weight: bold;
+
+            margin-bottom: 15px;
+
+            color: #1f6feb;
+        }
+
+
+        .value-row {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
             margin: 10px 0;
-        }
-        .alert {
+
             padding: 10px;
-            margin-top: 10px;
-            border-radius: 4px;
+
+            background: #f5f7fa;
+
+            border-radius: 8px;
         }
-        .cool { background-color: #d4edda; color: #155724; }
-        .warm { background-color: #fff3cd; color: #856404; }
-        .hot { background-color: #f8d7da; color: #721c24; }
+
+
+        .value-label {
+
+            font-size: 15px;
+
+            color: #666;
+        }
+
+
+        .value {
+
+            font-size: 26px;
+
+            font-weight: bold;
+        }
+
+
+        /* =========================
+           溫度警告
+        ========================= */
+
+        .alert {
+
+            margin-top: 12px;
+
+            padding: 10px;
+
+            border-radius: 8px;
+
+            font-size: 14px;
+
+            text-align: center;
+        }
+
+
+        .cool {
+
+            background: #d4edda;
+
+            color: #155724;
+        }
+
+
+        .warm {
+
+            background: #fff3cd;
+
+            color: #856404;
+        }
+
+
+        .hot {
+
+            background: #f8d7da;
+
+            color: #721c24;
+        }
+
+
+        /* =========================
+           圖表
+        ========================= */
+
+        .charts {
+
+            margin-top: 25px;
+        }
+
+
+        .charts h2 {
+
+            margin-bottom: 15px;
+        }
+
+
+        .chart-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(auto-fit, minmax(320px, 1fr));
+
+            gap: 18px;
+        }
+
+
         .chart {
-            margin-top: 15px;
+
+            background: white;
+
+            padding: 10px;
+
+            border-radius: 12px;
+
+            box-shadow:
+                0 3px 10px rgba(0,0,0,0.08);
         }
-        iframe {
+
+
+        .chart iframe {
+
             width: 100%;
-            height: 250px;
-            border: 1px solid #ddd;
+
+            height: 300px;
+
+            border: none;
         }
+
+
+        /* =========================
+           頁尾
+        ========================= */
+
+        footer {
+
+            text-align: center;
+
+            padding: 25px;
+
+            color: #777;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================
+           手機版
+        ========================= */
+
+        @media (max-width: 600px) {
+
+            .header h1 {
+
+                font-size: 24px;
+            }
+
+            .status {
+
+                flex-direction: column;
+
+                align-items: flex-start;
+            }
+
+            .chart iframe {
+
+                height: 250px;
+            }
+        }
+
     </style>
+
 </head>
+
+
 <body>
 
-    <div class="box">
-        <h3><?php echo $school_name; ?> 教室溫度監測</h3>       
-        <hr>
 
-        <div>即時溫度：</div>
-        <div class="temp"><span id="tempValue">--</span> °C</div>
+<!-- =========================
+     標題
+========================= -->
 
-        <div id="alertCard" class="alert warm">資料讀取中...</div>
+<header class="header">
 
-        <div class="chart">
-            <div>溫度歷史圖表：</div>
-            <iframe id="3451994" src="https://thingspeak.mathworks.com/channels/3451994/api_keys"></iframe>
+    <h1>🌡 智冷未來</h1>
+
+    <p>彰師附工教室環境監測系統</p>
+
+</header>
+
+
+<div class="container">
+
+
+    <!-- =========================
+         系統狀態
+    ========================= -->
+
+    <div class="status">
+
+        <div>
+
+            系統狀態：
+
+            <span id="systemStatus"
+                  class="online">
+
+                連線中...
+
+            </span>
+
         </div>
+
+
+        <div>
+
+            最後更新：
+
+            <span id="updateTime">
+
+                --
+
+            </span>
+
+        </div>
+
     </div>
 
-    <script>
-        const channelID = "YOUR_CHANNEL_ID"; 
-        const readApiKey = "YOUR_READ_API_KEY"; 
 
-        async function updateData() {
-            if (channelID === "YOUR_CHANNEL_ID") {
-                let mockTemp = (25 + Math.random() * 4).toFixed(1);
-                renderTemperature(mockTemp);
-                return;
+    <!-- =========================
+         感測器
+    ========================= -->
+
+    <div class="sensor-grid">
+
+
+        <!-- DHT11 #1 -->
+
+        <div class="sensor-card">
+
+            <div class="sensor-title">
+
+                🌡 DHT11 #1
+
+            </div>
+
+
+            <div class="value-row">
+
+                <span class="value-label">
+
+                    溫度
+
+                </span>
+
+                <span class="value">
+
+                    <span id="temp1">--</span> °C
+
+                </span>
+
+            </div>
+
+
+            <div class="value-row">
+
+                <span class="value-label">
+
+                    濕度
+
+                </span>
+
+                <span class="value">
+
+                    <span id="hum1">--</span> %
+
+                </span>
+
+            </div>
+
+
+            <div id="alert1"
+                 class="alert warm">
+
+                資料讀取中...
+
+            </div>
+
+        </div>
+
+
+
+        <!-- DHT11 #2 -->
+
+        <div class="sensor-card">
+
+            <div class="sensor-title">
+
+                🌡 DHT11 #2
+
+            </div>
+
+
+            <div class="value-row">
+
+                <span class="value-label">
+
+                    溫度
+
+                </span>
+
+                <span class="value">
+
+                    <span id="temp2">--</span> °C
+
+                </span>
+
+            </div>
+
+
+            <div class="value-row">
+
+                <span class="value-label">
+
+                    濕度
+
+                </span>
+
+                <span class="value">
+
+                    <span id="hum2">--</span> %
+
+                </span>
+
+            </div>
+
+
+            <div id="alert2"
+                 class="alert warm">
+
+                資料讀取中...
+
+            </div>
+
+        </div>
+
+
+
+        <!-- DHT11 #3 -->
+
+        <div class="sensor-card">
+
+            <div class="sensor-title">
+
+                🌡 DHT11 #3
+
+            </div>
+
+
+            <div class="value-row">
+
+                <span class="value-label">
+
+                    溫度
+
+                </span>
+
+                <span class="value">
+
+                    <span id="temp3">--</span> °C
+
+                </span>
+
+            </div>
+
+
+            <div class="value-row">
+
+                <span class="value-label">
+
+                    濕度
+
+                </span>
+
+                <span class="value">
+
+                    <span id="hum3">--</span> %
+
+                </span>
+
+            </div>
+
+
+            <div id="alert3"
+                 class="alert warm">
+
+                資料讀取中...
+
+            </div>
+
+        </div>
+
+
+
+        <!-- DHT11 #4 -->
+
+        <div class="sensor-card">
+
+            <div class="sensor-title">
+
+                🌡 DHT11 #4
+
+            </div>
+
+
+            <div class="value-row">
+
+                <span class="value-label">
+
+                    溫度
+
+                </span>
+
+                <span class="value">
+
+                    <span id="temp4">--</span> °C
+
+                </span>
+
+            </div>
+
+
+            <div class="value-row">
+
+                <span class="value-label">
+
+                    濕度
+
+                </span>
+
+                <span class="value">
+
+                    <span id="hum4">--</span> %
+
+                </span>
+
+            </div>
+
+
+            <div id="alert4"
+                 class="alert warm">
+
+                濕度未上傳
+
+            </div>
+
+        </div>
+
+
+
+        <!-- DS18B20 -->
+
+        <div class="sensor-card">
+
+            <div class="sensor-title">
+
+                🌡 DS18B20
+
+            </div>
+
+
+            <div class="value-row">
+
+                <span class="value-label">
+
+                    溫度
+
+                </span>
+
+                <span class="value">
+
+                    <span id="temp5">--</span> °C
+
+                </span>
+
+            </div>
+
+
+            <div class="alert warm">
+
+                DS18B20 僅測量溫度
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- =========================
+         ThingSpeak 歷史圖表
+    ========================= -->
+
+    <div class="charts">
+
+        <h2>📊 歷史資料</h2>
+
+
+        <div class="chart-grid">
+
+
+            <div class="chart">
+
+                <iframe
+                    src="https://thingspeak.mathworks.com/channels/3458958/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=30">
+                </iframe>
+
+            </div>
+
+
+            <div class="chart">
+
+                <iframe
+                    src="https://thingspeak.mathworks.com/channels/3458958/charts/2?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=30">
+                </iframe>
+
+            </div>
+
+
+            <div class="chart">
+
+                <iframe
+                    src="https://thingspeak.mathworks.com/channels/3458958/charts/3?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=30">
+                </iframe>
+
+            </div>
+
+
+            <div class="chart">
+
+                <iframe
+                    src="https://thingspeak.mathworks.com/channels/3458958/charts/4?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=30">
+                </iframe>
+
+            </div>
+
+
+            <div class="chart">
+
+                <iframe
+                    src="https://thingspeak.mathworks.com/channels/3458958/charts/5?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=30">
+                </iframe>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<footer>
+
+    智冷未來 © 2026｜彰師附工<br>
+
+    ThingSpeak Channel：3458958
+
+</footer>
+
+
+
+<script>
+
+
+    // ==========================================
+    // ThingSpeak Channel
+    // ==========================================
+
+    const channelID = "3458958";
+
+
+    // ==========================================
+    // 取得最新資料
+    // 因為 Channel 是 Public
+    // 所以不需要 Read API Key
+    // ==========================================
+
+    const url =
+        `https://api.thingspeak.com/channels/${channelID}/feeds/last.json`;
+
+
+    // ==========================================
+    // 更新資料
+    // ==========================================
+
+    async function updateData() {
+
+        try {
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "HTTP 錯誤：" + response.status
+                );
+
             }
 
-            const url = `https://api.thingspeak.com/channels/${3451994}/feeds/last.json?api_key=${2ZVSF5QJ3A6FLQGU}`;
 
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (data && data.field1) {
-                    const temp = parseFloat(data.field1).toFixed(1);
-                    renderTemperature(temp);
-                }
-            } catch (error) {
-                console.error("讀取失敗：", error);
+            const data = await response.json();
+
+
+            console.log("ThingSpeak 資料：", data);
+
+
+            // =========================
+            // Field 1
+            // DHT11 #1 溫度
+            // =========================
+
+            if (data.field1 !== null) {
+
+                document.getElementById("temp1")
+                    .innerText =
+                    parseFloat(data.field1).toFixed(1);
+
             }
+
+
+            // =========================
+            // Field 2
+            // DHT11 #2 溫度
+            // =========================
+
+            if (data.field2 !== null) {
+
+                document.getElementById("temp2")
+                    .innerText =
+                    parseFloat(data.field2).toFixed(1);
+
+            }
+
+
+            // =========================
+            // Field 3
+            // DHT11 #3 溫度
+            // =========================
+
+            if (data.field3 !== null) {
+
+                document.getElementById("temp3")
+                    .innerText =
+                    parseFloat(data.field3).toFixed(1);
+
+            }
+
+
+            // =========================
+            // Field 4
+            // DHT11 #4 溫度
+            // =========================
+
+            if (data.field4 !== null) {
+
+                document.getElementById("temp4")
+                    .innerText =
+                    parseFloat(data.field4).toFixed(1);
+
+            }
+
+
+            // =========================
+            // Field 5
+            // DS18B20 溫度
+            // =========================
+
+            if (data.field5 !== null) {
+
+                document.getElementById("temp5")
+                    .innerText =
+                    parseFloat(data.field5).toFixed(1);
+
+            }
+
+
+            // =========================
+            // Field 6
+            // DHT11 #1 濕度
+            // =========================
+
+            if (data.field6 !== null) {
+
+                document.getElementById("hum1")
+                    .innerText =
+                    parseFloat(data.field6).toFixed(1);
+
+            }
+
+
+            // =========================
+            // Field 7
+            // DHT11 #2 濕度
+            // =========================
+
+            if (data.field7 !== null) {
+
+                document.getElementById("hum2")
+                    .innerText =
+                    parseFloat(data.field7).toFixed(1);
+
+            }
+
+
+            // =========================
+            // Field 8
+            // DHT11 #3 濕度
+            // =========================
+
+            if (data.field8 !== null) {
+
+                document.getElementById("hum3")
+                    .innerText =
+                    parseFloat(data.field8).toFixed(1);
+
+            }
+
+
+            // DHT11 #4 濕度
+            // 你目前沒有上傳，因此不讀取
+            document.getElementById("hum4")
+                .innerText = "--";
+
+
+            // =========================
+            // 更新時間
+            // =========================
+
+            const time =
+                new Date(data.created_at);
+
+            document.getElementById("updateTime")
+                .innerText =
+                time.toLocaleString("zh-TW", {
+                    timeZone: "Asia/Taipei"
+                });
+
+
+            // =========================
+            // 系統狀態
+            // =========================
+
+            document.getElementById("systemStatus")
+                .innerText = "● 系統正常";
+
+
+            // =========================
+            // 溫度警告
+            // =========================
+
+            updateAlert("alert1", data.field1);
+
+            updateAlert("alert2", data.field2);
+
+            updateAlert("alert3", data.field3);
+
+            updateAlert("alert4", data.field4);
+
+
+        } catch (error) {
+
+            console.error(
+                "ThingSpeak 讀取失敗：",
+                error
+            );
+
+
+            document.getElementById("systemStatus")
+                .innerText = "● 連線失敗";
+
+            document.getElementById("systemStatus")
+                .style.color = "#dc3545";
+
         }
 
-        function renderTemperature(temp) {
-            document.getElementById('tempValue').innerText = temp;
-            const alertCard = document.getElementById('alertCard');
+    }
 
-            if (temp < 26) {
-                alertCard.className = "alert cool";
-                alertCard.innerHTML = "建議開啟電風扇即可，無需開冷氣。";
-            } else if (temp >= 26 && temp < 28) {
-                alertCard.className = "alert warm";
-                alertCard.innerHTML = "冷氣建議設定 27°C + 搭配循環扇。";
-            } else {
-                alertCard.className = "alert hot";
-                alertCard.innerHTML = "室內較熱，請先開窗通風 5 分鐘再開啟冷氣。";
-            }
+
+
+    // ==========================================
+    // 溫度警告
+    // ==========================================
+
+    function updateAlert(id, temperature) {
+
+        const card =
+            document.getElementById(id);
+
+
+        if (
+            temperature === null ||
+            temperature === undefined
+        ) {
+
+            card.className =
+                "alert warm";
+
+            card.innerText =
+                "資料讀取中...";
+
+            return;
+
         }
 
-        updateData();
-        setInterval(updateData, 15000);
-    </script>
+
+        const temp =
+            parseFloat(temperature);
+
+
+        if (temp < 26) {
+
+            card.className =
+                "alert cool";
+
+            card.innerText =
+                "環境溫度舒適";
+
+        }
+
+        else if (temp < 28) {
+
+            card.className =
+                "alert warm";
+
+            card.innerText =
+                "溫度稍高，可注意室內通風";
+
+        }
+
+        else {
+
+            card.className =
+                "alert hot";
+
+            card.innerText =
+                "室內溫度較高，建議注意降溫";
+
+        }
+
+    }
+
+
+
+    // ==========================================
+    // 第一次載入
+    // ==========================================
+
+    updateData();
+
+
+    // ==========================================
+    // 每 15 秒更新
+    // ==========================================
+
+    setInterval(
+        updateData,
+        15000
+    );
+
+
+</script>
+
 
 </body>
+
 </html>

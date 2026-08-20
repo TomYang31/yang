@@ -87,10 +87,10 @@
         .chart {
             margin-top: 15px;
         }
-        iframe {
-            width: 100%;
-            height: 250px;
-            border: 1px solid #ddd;
+        .chart-note {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
         }
         .updated {
             font-size: 12px;
@@ -143,10 +143,12 @@
     </div>
 
     <div class="box chart">
-        <h3>溫度歷史圖表</h3>
-        <iframe src="https://thingspeak.mathworks.com/channels/3458958/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=30"></iframe>
+        <h3>平均溫度歷史圖表</h3>
+        <div class="chart-note">每個時間點的數值 = 當下有連線的感測器溫度平均</div>
+        <canvas id="avgTempChart" height="220"></canvas>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
     <script>
         const channelID = "3458958";
         const readApiKey = ""; // 若 channel 是公開的可留空
@@ -268,8 +270,101 @@
             }
         }
 
+        // ====== 平均溫度歷史圖表 ======
+        let avgTempChart = null;
+
+        async function updateAvgTempChart() {
+            const tempFields = sensors.map(s => s.tempField); // 只看有量溫度的欄位
+
+            let feeds;
+
+            if (!channelID || channelID === "YOUR_CHANNEL_ID") {
+                // 模擬歷史資料
+                feeds = Array.from({ length: 30 }, (_, i) => {
+                    const entry = { created_at: new Date(Date.now() - (29 - i) * 60000).toISOString() };
+                    tempFields.forEach(f => entry[f] = (25 + Math.random() * 4).toFixed(1));
+                    return entry;
+                });
+            } else {
+                const keyParam = readApiKey ? `&api_key=${readApiKey}` : "";
+                const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?results=30&timezone=Asia/Taipei${keyParam}`;
+
+                try {
+                    const response = await fetch(url);
+                    const json = await response.json();
+                    feeds = json.feeds || [];
+                } catch (error) {
+                    console.error("歷史資料讀取失敗：", error);
+                    return;
+                }
+            }
+
+            // 每一筆資料只用「當下有回傳有效數值」的溫度感測器計算平均，未連線的不列入計算
+            const labels = [];
+            const avgValues = [];
+
+            feeds.forEach(entry => {
+                let sum = 0, count = 0;
+                tempFields.forEach(f => {
+                    if (isConnected(entry[f])) {
+                        sum += parseFloat(entry[f]);
+                        count++;
+                    }
+                });
+
+                if (count > 0) {
+                    const time = new Date(entry.created_at);
+                    labels.push(time.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }));
+                    avgValues.push((sum / count).toFixed(1));
+                }
+            });
+
+            renderAvgTempChart(labels, avgValues);
+        }
+
+        function renderAvgTempChart(labels, values) {
+            const ctx = document.getElementById('avgTempChart');
+            if (!ctx || typeof Chart === 'undefined') return;
+
+            if (avgTempChart) {
+                avgTempChart.data.labels = labels;
+                avgTempChart.data.datasets[0].data = values;
+                avgTempChart.update();
+                return;
+            }
+
+            avgTempChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '平均溫度 (°C)',
+                        data: values,
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            title: { display: true, text: '°C' }
+                        }
+                    }
+                }
+            });
+        }
+
         updateData();
+        updateAvgTempChart();
         setInterval(updateData, 15000);
+        setInterval(updateAvgTempChart, 60000); // 歷史圖表資料變動較慢，1 分鐘更新一次即可
     </script>
 
 </body>

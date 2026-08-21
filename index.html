@@ -81,8 +81,10 @@
         }
         .dot-on { background-color: #28a745; }
         .dot-off { background-color: #dc3545; }
+        .dot-warn { background-color: #fd7e14; }
         .status-text-on { color: #28a745; font-weight: bold; }
         .status-text-off { color: #dc3545; font-weight: bold; }
+        .status-text-warn { color: #fd7e14; font-weight: bold; }
 
         .chart {
             margin-top: 15px;
@@ -177,6 +179,18 @@
             return value !== null && value !== undefined && value !== "" && !isNaN(parseFloat(value));
         }
 
+        // ====== 合理範圍設定（超出範圍視為異常讀值，DHT11 讀取失敗常見雜訊值）======
+        const TEMP_MIN = 0, TEMP_MAX = 50;      // °C
+        const HUMID_MIN = 0, HUMID_MAX = 100;   // %
+        function inRange(value, min, max) {
+            const v = parseFloat(value);
+            return v >= min && v <= max;
+        }
+
+        // ====== 卡值偵測：連續 N 次抓到完全相同的數值，視為疑似韌體卡住 / 未真正更新 ======
+        const STUCK_THRESHOLD = 3; // 連續 3 次（約 45 秒，若輪詢間隔 15 秒）數值完全沒變就標記
+        const sensorHistory = {}; // { sensorName: { lastTemp, lastHumid, unchangedCount } }
+
         async function updateData() {
             let data;
 
@@ -214,8 +228,37 @@
                 const tempVal = data[s.tempField];
                 const humidVal = s.humidField ? data[s.humidField] : null;
 
-                const tempOK = isConnected(tempVal);
-                const humidOK = s.humidField ? isConnected(humidVal) : false;
+                let tempOK = isConnected(tempVal) && inRange(tempVal, TEMP_MIN, TEMP_MAX);
+                let humidOK = s.humidField ? (isConnected(humidVal) && inRange(humidVal, HUMID_MIN, HUMID_MAX)) : false;
+
+                const tempOutOfRange = isConnected(tempVal) && !inRange(tempVal, TEMP_MIN, TEMP_MAX);
+                const humidOutOfRange = s.humidField && isConnected(humidVal) && !inRange(humidVal, HUMID_MIN, HUMID_MAX);
+
+                // ---- 卡值偵測：跟上一次抓到的值比對，完全相同就累加計數 ----
+                if (!sensorHistory[s.name]) {
+                    sensorHistory[s.name] = { lastTemp: null, lastHumid: null, unchangedCount: 0 };
+                }
+                const hist = sensorHistory[s.name];
+                const sameAsLast = (tempOK && hist.lastTemp === tempVal) &&
+                                    (!s.humidField || (humidOK && hist.lastHumid === humidVal));
+
+                if (tempOK || humidOK) {
+                    if (sameAsLast) {
+                        hist.unchangedCount++;
+                    } else {
+                        hist.unchangedCount = 0;
+                    }
+                    hist.lastTemp = tempVal;
+                    hist.lastHumid = humidVal;
+                }
+                const isStuck = hist.unchangedCount >= STUCK_THRESHOLD;
+
+                // 異常讀值或疑似卡值都不計入平均，也不算「已連線」
+                const isAbnormal = tempOutOfRange || humidOutOfRange || isStuck;
+                if (isAbnormal) {
+                    tempOK = false;
+                    humidOK = false;
+                }
 
                 // 只要溫度或濕度其中一個有效，就算這顆感測器「連線中」
                 const connected = tempOK || humidOK;
@@ -229,16 +272,29 @@
                     humidCount++;
                 }
 
+                let statusClass, statusText, dotClass;
+                if (isAbnormal) {
+                    dotClass = 'dot-warn';
+                    statusClass = 'status-text-warn';
+                    statusText = isStuck ? '疑似未更新' : '數值異常';
+                } else if (connected) {
+                    dotClass = 'dot-on';
+                    statusClass = 'status-text-on';
+                    statusText = '已連線';
+                } else {
+                    dotClass = 'dot-off';
+                    statusClass = 'status-text-off';
+                    statusText = '未連線';
+                }
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${s.name}</td>
-                    <td>${tempOK ? parseFloat(tempVal).toFixed(1) : '--'}</td>
-                    <td>${humidOK ? parseFloat(humidVal).toFixed(1) : (s.humidField ? '--' : '不支援')}</td>
+                    <td>${isConnected(tempVal) ? parseFloat(tempVal).toFixed(1) : '--'}</td>
+                    <td>${s.humidField ? (isConnected(humidVal) ? parseFloat(humidVal).toFixed(1) : '--') : '不支援'}</td>
                     <td>
-                        <span class="status-dot ${connected ? 'dot-on' : 'dot-off'}"></span>
-                        <span class="${connected ? 'status-text-on' : 'status-text-off'}">
-                            ${connected ? '已連線' : '未連線'}
-                        </span>
+                        <span class="status-dot ${dotClass}"></span>
+                        <span class="${statusClass}">${statusText}</span>
                     </td>
                 `;
                 tbody.appendChild(row);
